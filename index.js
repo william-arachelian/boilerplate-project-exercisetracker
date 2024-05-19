@@ -4,7 +4,7 @@ const cors = require('cors')
 require('dotenv').config()
 const mongoose = require('mongoose');
 const {Schema, model} = mongoose;
-
+const {ObjectId} = require('mongodb');
 mongoose.connect("mongodb://localhost:27017/exercise_tracker");
 
 const userSchema = Schema({username: String});
@@ -12,7 +12,8 @@ const exerciseSchema = Schema({
     user_id: {type: String, required: true},
     description: {type: String, required: true},
     duration: {type: Number, required: true},
-    date: Date
+    date: {type: Date, required:true},
+
 
   }
 );
@@ -42,6 +43,7 @@ app.post("/api/users", async (req,res) => {
   try {
   const userObj = new User({username: req.body.username});
   const user = await userObj.save();
+
   return res.json(user);
 
   }
@@ -51,40 +53,39 @@ app.post("/api/users", async (req,res) => {
 });
 
 app.post("/api/users/:_id/exercises", async (req,res) => {
+
+  console.log(req.body)
   const id = req.params._id;
-  const {description, duration, date} = req.body;
+  let {description, date, duration} = req.body;
+  
   try {
-
     const user = await User.findById(id);
-    if (!user) res.send("No user with id :" + id);
-
+    if (!user) throw "user not found"
     else {
 
       const exerciseObj = new Exercise({
         user_id: user._id,
         description,
-        duration: parseInt(duration),
+        duration,
         date: date ? new Date(date) : new Date()
       })
-
+      
       const exercise = await exerciseObj.save();
-
-      console.log(user);
-      console.log(exercise);
-
-      res.json({
+      
+      let split = exercise.date.toUTCString().substring(0, 16).replace(",", "").split(" ");
+      
+      return res.json({
         _id: user._id,
         username: user.username,
         description: exercise.description,
         duration: exercise.duration,
-        date: exercise.date.toDateString()
+        date: split[0]+" "+split[2]+" "+split[1]+" "+split[3]
       });
 
     }
   } catch(e) {
     console.log(e);
   }
-
 });
 
 app.get("/api/users/:_id/logs", async (req,res) => {
